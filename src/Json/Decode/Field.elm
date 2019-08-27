@@ -1,4 +1,4 @@
-module Json.Decode.Field exposing (require, requireAt, attempt, attemptAt)
+module Json.Decode.Field exposing (require, requireAt, optional, optionalAt, attempt, attemptAt)
 
 {-| # Decode JSON objects
 
@@ -12,13 +12,15 @@ In that case there are two possible solutions:
 2. Deal with the missing value situation, either by defaulting to some value or by
    using a `Maybe` value
 
-In this module these two options are represented by `require` and
+In this module these two options are represented by `require`, `optional`, and
 `attempt`.
 
-* `require` can fail if the decoding can not be completed.
+* `require` can fail if the decoding cannot be completed.
+* `optional` can fail if the field exists but cannot be decoded, but will
+succeed if the field is missing.
 * `attempt` will never fail. It always decodes to a `Maybe` value.
 
-@docs require, requireAt, attempt, attemptAt
+@docs require, requireAt, optional, optionalAt, attempt, attemptAt
 
 -}
 
@@ -54,7 +56,7 @@ require fieldName valueDecoder continuation =
         |> Decode.andThen continuation
 
 
-{-| Decode nested fields. Works the same as `require` but on nested fieds.
+{-| Decode required nested fields. Works the same as `require` but on nested fieds.
 
     blogPost : Decoder BlogPost
     blogPost =
@@ -75,6 +77,62 @@ requireAt path valueDecoder continuation =
 
 
 {-| Decode optional fields.
+
+If the decode succeeds you get a `Just value`. If the field is missing you get
+a `Nothing`.
+
+Example:
+
+    name : Decoder Name
+    name =
+        require "first" Decode.string <| \first ->
+        optional "middle" Decode.string <| \maybeMiddle ->
+        require "last" Decode.string <| \last ->
+
+        Decode.succeed
+            { first = first
+            , middle = Maybe.withDefault "" middle
+            , last = last
+            }
+
+The outcomes of this example decoder are:
+
+* If the JSON value is not an object the decoder will fail.
+* If the value of field `"middle"` is a string, `maybeMiddle` will be `Just string`
+* If the value of field `"middle"` is something else, the decoder will fail.
+* If the field `"middle"` is missing, `maybeMiddle` will be `Nothing`
+
+-}
+optional : String -> Decoder a -> (Maybe a -> Decoder b) -> Decoder b
+optional fieldName valueDecoder continuation =
+    attempt fieldName Decode.value <| \value ->
+    case value of
+        Just _ ->
+            require fieldName valueDecoder (Decode.succeed << Just)
+                |> Decode.andThen continuation
+
+        Nothing ->
+            Decode.succeed Nothing
+                |> Decode.andThen continuation
+
+
+{-| Decode optional nested fields. Works the same was as `optional` but on nested fields.
+
+-}
+optionalAt : List String -> Decoder a -> (Maybe a -> Decoder b) -> Decoder b
+optionalAt path valueDecoder continuation =
+    attemptAt path Decode.value <| \value ->
+    case value of
+        Just _ ->
+            requireAt path valueDecoder (Decode.succeed << Just)
+                |> Decode.andThen continuation
+
+        Nothing ->
+            Decode.succeed Nothing
+                |> Decode.andThen continuation
+
+
+{-| Decode fields that may fail.
 
 Always decodes to a `Maybe` value and never fails.
 
@@ -108,12 +166,10 @@ attempt fieldName valueDecoder continuation =
         |> Decode.andThen continuation
 
 
-{-| Decode optional nested fields. Works the same way as `attempt` but on nested fields.
+{-| Decode nested fields that may fail. Works the same way as `attempt` but on nested fields.
 
 -}
 attemptAt : List String -> Decoder a -> (Maybe a -> Decoder b) -> Decoder b
 attemptAt path valueDecoder continuation =
     Decode.maybe (Decode.at path valueDecoder)
         |> Decode.andThen continuation
-
-
