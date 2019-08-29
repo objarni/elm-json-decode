@@ -31,6 +31,8 @@ import Json.Decode as Decode exposing (Decoder)
 
 Example:
 
+    import Json.Decode as Decode exposing (Decoder)
+
     user : Decoder User
     user =
         require "id" Decode.int <| \id ->
@@ -58,6 +60,8 @@ require fieldName valueDecoder continuation =
 
 {-| Decode required nested fields. Works the same as `require` but on nested fieds.
 
+    import Json.Decode as Decode exposing (Decoder)
+
     blogPost : Decoder BlogPost
     blogPost =
         require "id" Decode.int <| \id ->
@@ -83,6 +87,8 @@ a `Nothing`.
 
 Example:
 
+    import Json.Decode as Decode exposing (Decoder)
+
     name : Decoder Name
     name =
         require "first" Decode.string <| \first ->
@@ -95,12 +101,25 @@ Example:
             , last = last
             }
 
-The outcomes of this example decoder are:
+The outcomes of this example are:
 
 * If the JSON value is not an object the decoder will fail.
 * If the value of field `"middle"` is a string, `maybeMiddle` will be `Just string`
 * If the value of field `"middle"` is something else, the decoder will fail.
 * If the field `"middle"` is missing, `maybeMiddle` will be `Nothing`
+
+Note that optional is not the same as nullable. If a field must exist but can
+be null, use [`require`](#require) and
+[`Decode.nullable`](https://package.elm-lang.org/packages/elm/json/latest/Json-Decode#nullable)
+instead:
+
+    require "field" (Decode.nullable Decode.string) <| \field ->
+
+If a field is both optional and nullable [`attempt`](#attempt) is a better
+option than using `optional` with `Decode.nullable`, as `attempt` gives you a
+`Maybe a` instead of the `Maybe (Maybe a)` the other combination would:
+
+    attempt "field" Decode.string <| \maybeField ->
 
 -}
 optional : String -> Decoder a -> (Maybe a -> Decoder b) -> Decoder b
@@ -138,6 +157,8 @@ Always decodes to a `Maybe` value and never fails.
 
 Example:
 
+    import Json.Decode as Decode exposing (Decoder)
+
     person : Decoder Person
     person =
         require "name" Decode.string <| \name ->
@@ -155,9 +176,6 @@ In this example the `maybeWeight` value will be `Nothing` if:
 * The `weight` field is not an `Int`.
 
 In this case there is no difference between a field being `null` or missing.
-If a field must exist but can be null, use `require` and `Decode.maybe` instead:
-
-    require "field" (Decode.maybe Decode.string) <| \field ->
 
 -}
 attempt : String -> Decoder a -> (Maybe a -> Decoder b) -> Decoder b
