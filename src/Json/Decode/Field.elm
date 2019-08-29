@@ -131,8 +131,7 @@ optional fieldName valueDecoder continuation =
                 |> Decode.andThen continuation
 
         Nothing ->
-            Decode.succeed Nothing
-                |> Decode.andThen continuation
+            continuation Nothing
 
 
 {-| Decode optional nested fields. Works the same was as `optional` but on nested fields.
@@ -147,8 +146,7 @@ optionalAt path valueDecoder continuation =
                 |> Decode.andThen continuation
 
         Nothing ->
-            Decode.succeed Nothing
-                |> Decode.andThen continuation
+            continuation Nothing
 
 
 {-| Decode fields that may fail.
